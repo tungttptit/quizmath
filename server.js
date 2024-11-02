@@ -1,6 +1,16 @@
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
+import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const MONGODB_URI = process.env.MONGODB_URI;
+const client = new MongoClient(MONGODB_URI);
+await client.connect();
+console.log("Đã kết nối tới MongoDB");
+const db = client.db("mydatabase");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";

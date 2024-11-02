@@ -1,6 +1,6 @@
 // client.js
 import { io } from "socket.io-client";
-const socket = io("http://quizmath-lyqj.vercel.app");
+const socket = io("https://quizmath.onrender.com");
 
 socket.on("connect", () => {
   console.log("Đã kết nối tới server");
