@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+var users = {};
+
 const MONGODB_URI = process.env.MONGODB_URI;
 const client = new MongoClient(MONGODB_URI);
 await client.connect();
@@ -25,17 +27,43 @@ app.prepare().then(() => {
   const io = new Server(httpServer);
 
   io.on("connection", (socket) => {
-      console.log("Client đã kết nối");
-
-      // Xử lý các sự kiện từ client
-      socket.on("message", (msg) => {
-        console.log("Nhận tin nhắn:", msg);
-        io.emit("message", msg); // Phát lại tin nhắn cho các client khác
+      console.log("Server socket is starting.....")
+      socket.on("connected", email => {
+        users[email] = socket;
+        console.log("connected " + email)
+      })
+      /* Nhận request Rent từ user => chuyển cho player */
+      socket.on("send-request", function (jsonData) {
+          console.log(jsonData);
+          // io.sockets.emit("send-request", jsonData);
+          // socket.broadcast.emit('receive-request', jsonData);
+          let receiverEmail = jsonData['ReceiverEmail'];
+          let message = jsonData['message']; //message{'Email':'diepgiahan@gmail.com','DisplayName':'Diep Gia Han','TimeToRent':4,'TotalMoney':'350000','message':'choi voi minh nha ban'}
+          let receiverSocket = users[receiverEmail];
+          if (receiverSocket)
+              receiverSocket.emit('receive-request', message)
+          else
+              socket.emit('receive-request', { "isLogOut": "Player " + PlayerName + " đã không còn sẵn sàng để thuê/ hoặc không còn online." })
+      });
+      /* Nhận thông báo close */
+      socket.on("manual-disconnection", function (email) {
+          delete users[email];
+      });
+      /* Nhận response => Trả lời request rent cho user */
+      socket.on("response-receive", function (jsonData) {
+          let emailResponse = jsonData['email-response'];
+          receiverSocket = users[emailResponse];
+          if (receiverSocket)
+              receiverSocket.emit('waiting-response', jsonData);
       });
 
-      socket.on("disconnect", () => {
-        console.log("Client đã ngắt kết nối");
-      });
+      /* Nhận finish rent từ user => đẩy qua player để update tiền */
+      socket.on("finish-rent", function (data) {
+          let playerSocket = users[data['Player']];
+          if (playerSocket) {
+              playerSocket.emit('finish-rent', data);
+          }
+      })
     });
 
   httpServer
